@@ -6,6 +6,9 @@ node_modules/
 .env.*
 !.env.example
 
+# Certifying Authority — the CA private key is the crown jewel. Never commit.
+ca/
+
 # Logs
 logs/
 *.log

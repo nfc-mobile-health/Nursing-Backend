@@ -3,8 +3,19 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
+const { isCaAvailable } = require('./services/credentialService');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Warn early if the CA is missing — credential issuance will fail without it.
+// (Registration still creates users; the response just carries a credentialError.)
+if (!isCaAvailable()) {
+    console.warn('⚠️  CA not found. Run `npm run generate-ca` (dev) or set ' +
+        'CA_PRIVATE_KEY_PEM / CA_CERT_PEM (prod). Credential issuance is disabled until then.');
+} else {
+    console.log('🔐 CA loaded — credential issuance enabled.');
+}
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -22,7 +33,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/nursing_r
 app.use('/api/nurses',       require('./routes/nurses'));
 app.use('/api/patients',     require('./routes/patients'));
 app.use('/api/records',      require('./routes/records'));
-app.use('/api/certificates', require('./routes/certificates'));
+app.use('/api/credentials',  require('./routes/credentials'));
 
 // --- Legacy /api/reports — kept for Aggregator backward compatibility ---
 // The Aggregator's SyncRepository.kt posts raw text file content here.
@@ -73,8 +84,11 @@ app.listen(PORT, () => {
     console.log(`  POST  /api/records`);
     console.log(`  GET   /api/records/:patientId`);
     console.log(`  GET   /api/records/:patientId/latest`);
-    console.log(`  POST  /api/certificates`);
-    console.log(`  GET   /api/certificates/:patientId`);
+    console.log(`  POST  /api/credentials/rotate`);
+    console.log(`  POST  /api/credentials/revoke`);
+    console.log(`  GET   /api/credentials/ca`);
+    console.log(`  GET   /api/credentials/verify/:ownerId`);
+    console.log(`  GET   /api/credentials/:ownerId`);
     console.log(`  POST  /api/reports  (legacy)`);
     console.log(`  GET   /health`);
 });

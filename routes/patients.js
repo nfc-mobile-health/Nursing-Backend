@@ -1,8 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const Patient = require('../models/Patient');
+const { issueOrReuse } = require('../services/credentialStore');
 
-// Register a patient. If patientId already exists, return the existing record.
+// Register a patient and issue their credential.
+// Idempotent: re-registering an existing patient returns their record and PUBLIC
+// credential material only (the private key is issued exactly once).
 router.post('/register', async (req, res) => {
     try {
         const { patientId, name, age, gender, bloodType, contactNo } = req.body;
@@ -11,13 +14,29 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ success: false, message: 'patientId and name are required' });
         }
 
-        const existing = await Patient.findOne({ patientId });
-        if (existing) {
-            return res.json({ success: true, message: 'Patient already registered', patient: existing });
+        let patient = await Patient.findOne({ patientId });
+        const created = !patient;
+        if (!patient) {
+            patient = await Patient.create({ patientId, name, age, gender, bloodType, contactNo });
         }
 
-        const patient = await Patient.create({ patientId, name, age, gender, bloodType, contactNo });
-        res.status(201).json({ success: true, message: 'Patient registered', patient });
+        // Issue (or reuse) the credential. Best-effort: a CA hiccup must not block
+        // user registration — the device can retry / call /rotate later.
+        let credentials = null, credentialError = null;
+        try {
+            ({ credentials } = await issueOrReuse(patientId, 'patient'));
+        } catch (e) {
+            credentialError = e.message;
+            console.error('[PATIENTS] Credential issuance failed:', e.message);
+        }
+
+        res.status(created ? 201 : 200).json({
+            success: true,
+            message: created ? 'Patient registered' : 'Patient already registered',
+            patient,
+            credentials,
+            ...(credentialError ? { credentialError } : {})
+        });
 
     } catch (err) {
         console.error('[PATIENTS] Register error:', err.message);
