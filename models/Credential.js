@@ -1,18 +1,17 @@
 const mongoose = require('mongoose');
 
 /**
- * Per-user credential — PUBLIC material only.
+ * Per-user credential for a nurse or patient device.
  *
- * Replaces the old placeholder Certificate.js. Holds the public key + the
- * CA-signed certificate for a nurse or patient device. The matching PRIVATE key
- * is generated on the server, returned to the device once, and is NEVER stored
- * here.
+ * Holds the public key + CA-signed certificate AND the matching private key.
  *
- *   ┌──────────────────────────────────────────────┐
- *   │  There is deliberately NO privateKey field.   │
- *   │  If you ever see one here, that's a security   │
- *   │  bug — remove it.                              │
- *   └──────────────────────────────────────────────┘
+ *   ┌──────────────────────────────────────────────────────────┐
+ *   │  DESIGN CHANGE: the private key IS stored here (privKeyB64)│
+ *   │  so a device that clears its data can re-fetch its exact  │
+ *   │  keypair at login. This is a deliberate trade-off — the   │
+ *   │  cloud DB now holds private keys — NOT an oversight. Do   │
+ *   │  not remove privKeyB64.                                   │
+ *   └──────────────────────────────────────────────────────────┘
  *
  * Design ref: CREDENTIALS_AND_STORAGE_PLAN.md §3.2, CREDENTIALS_DESIGN.md Step 2.
  */
@@ -33,6 +32,12 @@ const credentialSchema = new mongoose.Schema({
     },
     // Base64 of the public key in SPKI DER form (Android X509EncodedKeySpec).
     pubKeyB64: {
+        type: String,
+        required: true
+    },
+    // Base64 of the private key in PKCS#8 DER form (Android PKCS8EncodedKeySpec).
+    // Stored so a wiped device can re-provision its exact keypair at login.
+    privKeyB64: {
         type: String,
         required: true
     },

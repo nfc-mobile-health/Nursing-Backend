@@ -13,7 +13,8 @@
  *   4. SHA256withRSA sign/verify round-trip       -> CryptoUtils.rsaSign/rsaVerify
  *   5. RSA/ECB/PKCS1Padding encrypt/decrypt        -> CryptoUtils.rsaEncrypt/rsaDecrypt
  *   6. certificate is CA-signed and its key == returned public key
- *   7. the Mongo `store` object contains NO private key
+ *   7. the Mongo `store` object persists the private key (privKeyB64) so a wiped
+ *      device can re-provision at login
  *
  * Run:  npm run test:creds   (needs ca/ present — run `npm run generate-ca` first)
  */
@@ -103,10 +104,10 @@ try {
     check('certificate is signed by our CA', false, e.message);
 }
 
-// 7: nothing private leaks into what we persist.
-const storeStr = JSON.stringify(store).toLowerCase();
-check('Mongo store object has NO private key field',
-    store.privateKey === undefined && !storeStr.includes('privatekey') && !storeStr.includes('private key'));
+// 7: the store persists the private key (privKeyB64) and it matches the one
+// returned to the device — this is what lets a wiped device re-provision.
+check('Mongo store persists the private key (privKeyB64)',
+    !!store.privKeyB64 && store.privKeyB64 === credentials.privateKey);
 check('Mongo store has public material (pubKeyB64, certPem, serialNumber)',
     !!store.pubKeyB64 && !!store.certPem && !!store.serialNumber);
 

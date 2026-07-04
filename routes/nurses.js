@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Nurse = require('../models/Nurse');
-const { issueOrReuse } = require('../services/credentialStore');
+const { issueOrReuse, getUsableCredentials } = require('../services/credentialStore');
 
 // Register a nurse and issue their credential.
 // Idempotent: re-registering an existing nurse returns their record and PUBLIC
@@ -44,12 +44,22 @@ router.post('/register', async (req, res) => {
     }
 });
 
-// Get nurse profile by nurseId.
+// Get nurse profile by nurseId (login). Also returns the stored credentials
+// (incl. private key) so a device that cleared its data can re-provision.
 router.get('/:nurseId', async (req, res) => {
     try {
         const nurse = await Nurse.findOne({ nurseId: req.params.nurseId });
         if (!nurse) return res.status(404).json({ success: false, message: 'Nurse not found' });
-        res.json({ success: true, nurse });
+
+        // Best-effort: a credential lookup hiccup must not block login.
+        let credentials = null;
+        try {
+            credentials = await getUsableCredentials(req.params.nurseId);
+        } catch (e) {
+            console.error('[NURSES] Credential fetch failed:', e.message);
+        }
+
+        res.json({ success: true, nurse, credentials });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

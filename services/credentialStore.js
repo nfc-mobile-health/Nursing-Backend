@@ -23,7 +23,7 @@ async function forceIssue(ownerId, role) {
 
 /**
  * Idempotent issuance used at registration.
- *   - VALID credential already exists -> return PUBLIC material only (no private key).
+ *   - VALID credential already exists -> return it (incl. the stored private key).
  *   - otherwise (missing / expired / revoked) -> generate a new one.
  *
  * @returns {{ reused: boolean, credentials: object }}
@@ -31,17 +31,33 @@ async function forceIssue(ownerId, role) {
 async function issueOrReuse(ownerId, role) {
     const existing = await Credential.findOne({ ownerId });
     if (existing && existing.isValid()) {
-        return {
-            reused: true,
-            credentials: {
-                publicKey: existing.pubKeyB64,
-                certificate: existing.certPem,
-                caCertificate: getCaCertPem()
-                // no privateKey — only ever returned at first issue / rotate
-            }
-        };
+        return { reused: true, credentials: toDeviceCredentials(existing) };
     }
     return { reused: false, credentials: await forceIssue(ownerId, role) };
 }
 
-module.exports = { issueOrReuse, forceIssue };
+/**
+ * Shape a stored Credential doc into the device-facing credentials object
+ * (the same shape forceIssue / issueCredential return). Includes the private key.
+ */
+function toDeviceCredentials(cred) {
+    return {
+        privateKey: cred.privKeyB64,
+        publicKey: cred.pubKeyB64,
+        certificate: cred.certPem,
+        caCertificate: getCaCertPem()
+    };
+}
+
+/**
+ * Fetch a usable stored credential for login/re-provisioning.
+ * Returns the device-facing credentials (incl. private key), or null if there is
+ * no credential or it is revoked/expired.
+ */
+async function getUsableCredentials(ownerId) {
+    const cred = await Credential.findOne({ ownerId });
+    if (!cred || !cred.isValid()) return null;
+    return toDeviceCredentials(cred);
+}
+
+module.exports = { issueOrReuse, forceIssue, getUsableCredentials };

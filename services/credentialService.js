@@ -96,8 +96,9 @@ function generateSerial() {
  * @param {string} ownerId  nurseId or patientId (becomes the cert CommonName)
  * @param {string} role     'nurse' | 'patient'
  * @returns {{ store: object, credentials: object }}
- *   store:       persist this in Mongo (public material only — NO private key)
- *   credentials: return this to the device ONCE (includes the private key)
+ *   store:       persist this in Mongo (incl. privKeyB64 so a wiped device can
+ *                re-fetch its exact keypair at login)
+ *   credentials: return this to the device (includes the private key)
  */
 function issueCredential(ownerId, role) {
     const { caPrivateKey, caCert, caCertPem } = getCA();
@@ -144,9 +145,10 @@ function issueCredential(ownerId, role) {
     const certPem = forge.pki.certificateToPem(cert);
 
     return {
-        // -> MongoDB (public only, never the private key)
+        // -> MongoDB (incl. private key so a wiped device can re-provision at login)
         store: {
             pubKeyB64: publicKeyB64,
+            privKeyB64: privateKeyB64,
             certPem,
             serialNumber: cert.serialNumber,
             issuedAt: now,
