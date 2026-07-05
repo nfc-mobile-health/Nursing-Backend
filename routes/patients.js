@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Patient = require('../models/Patient');
-const { issueOrReuse } = require('../services/credentialStore');
+const { issueOrReuse, getUsableCredentials } = require('../services/credentialStore');
 
 // Register a patient and issue their credential.
 // Idempotent: re-registering an existing patient returns their record and PUBLIC
@@ -44,14 +44,25 @@ router.post('/register', async (req, res) => {
     }
 });
 
-// Get patient profile with their full details history populated.
+// Get patient profile with their full details history populated (login).
+// Also returns the stored credentials (incl. private key) so an Aggregator that
+// cleared its data can re-provision — mirrors the nurse login route.
 router.get('/:patientId', async (req, res) => {
     try {
         const patient = await Patient.findOne({ patientId: req.params.patientId })
             .populate({ path: 'details', options: { sort: { createdAt: -1 } } });
 
         if (!patient) return res.status(404).json({ success: false, message: 'Patient not found' });
-        res.json({ success: true, patient });
+
+        // Best-effort: a credential lookup hiccup must not block login.
+        let credentials = null;
+        try {
+            credentials = await getUsableCredentials(req.params.patientId);
+        } catch (e) {
+            console.error('[PATIENTS] Credential fetch failed:', e.message);
+        }
+
+        res.json({ success: true, patient, credentials });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
