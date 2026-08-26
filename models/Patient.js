@@ -23,6 +23,18 @@ const patientSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    sugar: {
+        type: String,
+        trim: true
+    },
+    height: {
+        type: String,
+        trim: true
+    },
+    weight: {
+        type: String,
+        trim: true
+    },
     contactNo: {
         type: String,
         trim: true
