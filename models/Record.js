@@ -31,6 +31,9 @@ const recordSchema = new mongoose.Schema({
     temp: {
         type: Number    // body temperature
     },
+    oxygenLevel: {
+        type: Number    // oxygen saturation (% SpO2)
+    },
     obs: {
         type: String    // observations / description
     },

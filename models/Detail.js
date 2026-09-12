@@ -22,6 +22,9 @@ const detailSchema = new mongoose.Schema({
     temp: {
         type: Number
     },
+    oxygenLevel: {
+        type: Number
+    },
     // Reference to the full Record document
     recordId: {
         type: mongoose.Schema.Types.ObjectId,

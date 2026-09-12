@@ -8,7 +8,8 @@ const { issueOrReuse, getUsableCredentials } = require('../services/credentialSt
 // credential material only (the private key is issued exactly once).
 router.post('/register', async (req, res) => {
     try {
-        const { patientId, name, age, gender, bloodType, sugar, height, weight, contactNo } = req.body;
+        const { patientId, name, age, gender, bloodType, sugar, height, weight, oxygenLevel, spo2, contactNo } = req.body;
+        const resolvedOxygen = oxygenLevel || spo2;
 
         if (!patientId || !name) {
             return res.status(400).json({ success: false, message: 'patientId and name are required' });
@@ -17,7 +18,18 @@ router.post('/register', async (req, res) => {
         let patient = await Patient.findOne({ patientId });
         const created = !patient;
         if (!patient) {
-            patient = await Patient.create({ patientId, name, age, gender, bloodType, sugar, height, weight, contactNo });
+            patient = await Patient.create({
+                patientId,
+                name,
+                age,
+                gender,
+                bloodType,
+                sugar,
+                height,
+                weight,
+                oxygenLevel: resolvedOxygen,
+                contactNo
+            });
         }
 
         // Issue (or reuse) the credential. Best-effort: a CA hiccup must not block

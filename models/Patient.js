@@ -35,6 +35,10 @@ const patientSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    oxygenLevel: {
+        type: String,
+        trim: true
+    },
     contactNo: {
         type: String,
         trim: true

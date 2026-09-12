@@ -9,14 +9,27 @@ const Patient = require('../models/Patient');
 // Also creates a Detail summary and appends it to the Patient's details[].
 router.post('/', async (req, res) => {
     try {
-        const { patientId, nurseId, date, time, bp, hr, rr, temp, obs, med } = req.body;
+        const { patientId, nurseId, date, time, bp, hr, rr, temp, obs, med, oxygenLevel, spo2 } = req.body;
+        const resolvedOxygen = (oxygenLevel !== undefined && oxygenLevel !== null) ? oxygenLevel : spo2;
 
         if (!patientId || !nurseId || !date) {
             return res.status(400).json({ success: false, message: 'patientId, nurseId, and date are required' });
         }
 
         // Create the full record.
-        const record = await Record.create({ patientId, nurseId, date, time, bp, hr, rr, temp, obs, med });
+        const record = await Record.create({
+            patientId,
+            nurseId,
+            date,
+            time,
+            bp,
+            hr,
+            rr,
+            temp,
+            oxygenLevel: resolvedOxygen,
+            obs,
+            med
+        });
 
         // Create a lightweight detail summary.
         const detail = await Detail.create({
@@ -25,6 +38,7 @@ router.post('/', async (req, res) => {
             bp,
             hr,
             temp,
+            oxygenLevel: resolvedOxygen,
             recordId: record._id
         });
 
