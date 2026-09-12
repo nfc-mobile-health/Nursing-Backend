@@ -52,7 +52,20 @@ const patientSchema = new mongoose.Schema({
     certId: {
         type: String,
         default: null
+    },
+    // Hashed PIN (salt:hash) for patient login authentication
+    pin: {
+        type: String,
+        default: null
     }
 }, { timestamps: true });
+
+// Ensure hashed PIN is never exposed in JSON responses
+patientSchema.set('toJSON', {
+    transform: (doc, ret) => {
+        delete ret.pin;
+        return ret;
+    }
+});
 
 module.exports = mongoose.model('Patient', patientSchema);

@@ -27,7 +27,20 @@ const nurseSchema = new mongoose.Schema({
     contactNo: {
         type: String,
         trim: true
+    },
+    // Hashed PIN (salt:hash) for nurse login authentication
+    pin: {
+        type: String,
+        default: null
     }
 }, { timestamps: true });
+
+// Ensure hashed PIN is never exposed in JSON responses
+nurseSchema.set('toJSON', {
+    transform: (doc, ret) => {
+        delete ret.pin;
+        return ret;
+    }
+});
 
 module.exports = mongoose.model('Nurse', nurseSchema);
